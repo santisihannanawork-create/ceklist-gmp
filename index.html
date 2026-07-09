@@ -4,11 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aplikasi Checklist GMP Offline</title>
-    <!-- Tailwind CSS embedded via style for offline resilience once cached -->
+    <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         body { background-color: #f3f4f6; }
         .sticky-header { position: sticky; top: 0; z-index: 50; }
+        /* Menghilangkan arrow spinner default pada input number di Chrome/Android agar rapi */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
     </style>
 </head>
 <body class="text-gray-800 antialiased font-sans">
@@ -17,7 +23,7 @@
     <header class="bg-blue-700 text-white p-4 shadow-md sticky-header flex justify-between items-center">
         <div>
             <h1 class="text-lg font-bold">Checklist Audit GMP</h1>
-            <p class="text-xs text-blue-200">Kepatuhan Standar Mutu & Sanitasi</p>
+            <p class="text-xs text-blue-200">Kepatuhan Standar Mutu &amp; Kuantitas Temuan</p>
         </div>
         <div class="flex gap-2">
             <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-2 rounded shadow font-semibold transition">
@@ -50,7 +56,7 @@
             <div id="questions-container" class="space-y-6"></div>
         </form>
 
-        <!-- Reset Button Section (Small text link below) -->
+        <!-- Reset Button Section -->
         <div class="mt-8 text-center">
             <button onclick="resetForm()" class="text-xs text-red-500 hover:text-red-700 underline cursor-pointer bg-none border-none p-0">
                 Hapus semua data / Reset Form
@@ -60,7 +66,6 @@
 
     <!-- JavaScript Data & Logic -->
     <script>
-        // Data Pertanyaan Lengkap GMP
         const gmpData = [
             {
                 id: 1, title: "1. DINDING", questions: [
@@ -220,7 +225,7 @@
                     "14.1 Apakah bahan baku dan barang diletakkan di pallet (tidak di lantai)?", "14.2 Apakah jarak penyimpanan bahan baku dan barang jadi minimal 45 cm dari dinding?",
                     "14.3 Apakah pallet dalam kondisi baik dan bersih?", "14.4 Apakah ada lembaran alas diantara palet dan bahan baku?",
                     "14.5 Apakah stacking dilakukan secara benar dan aman?", "14.6 Apakah stock tidak menempel ke langit-langit dan tidak menghalangi ventilasi atau lampu?",
-                    "14.7 Apakah stock bebas dari akumulasi debu dan benda-benda asing lainnya?", "14.8 Apakah terlihat kebocoran pada produk yang disimpan?",
+                    "14.7 Apakah stock bebas dari akumulasi debu and benda-benda asing lainnya?", "14.8 Apakah terlihat kebocoran pada produk yang disimpan?",
                     "14.9 Apakah terjadi kerusakan bahan baku/produk jadi?", "14.10 Apakah semua stock memiliki identitas yang jelas (nama, kode, status, tanggal)?",
                     "14.11 Apakah stock disimpan di area yang bersih dan kering, serta terlindungi dari percikan dan debu?",
                     "14.12 Apakah penataan stock tidak menjadi tempat persembunyian serangga atau rodent?", "14.13 Bila ada ketentuan maksimum stocking, apakah diikuti?",
@@ -276,7 +281,7 @@
                     "18.6 Apakah terlihat saranga atau usaha untuk memperoleh material sarang?",
                     "18.7 Apakah ada bangkai atau pallet, station rusak, umpan tercecer, jamur atau kerumunan serangga yang mengindikasikan kurangnya inspeksi dan control selama pengujian bait station?",
                     "18.8 Apakah ditemukan ilang pada fondasi bangunan?", "18.9 Apakah ditemukan binatang-binatang yang lain seperti kucing,anjing,tupai,dll?",
-                    "18.10 Apakah ada aktivitas rodent disekitar slow moving packaging material dan advertising material/bahan baku?",
+                    "18.10 Apakah ada aktivitas rodent disekitar slow moving packaging material and advertising material/bahan baku?",
                     "18.11 Apakah pallet yang berisi stock diperiksa untuk aktivitas rodent?",
                     "18.12 Apakah ada kotoran diantara pallet berisi stock dan tempat yang berantakan digudang penyimpanan?",
                     "18.13 Apakah ditemukan rodent pada box umpan/perangkap mekanik?",
@@ -320,7 +325,7 @@
                     "20.24 Apakah fitting dan selang terlindungi (tidak diatas lantai, kering, dll)?",
                     "20.25 Apakah selang air yang digunakan dalam proses produksi dalam kondisi baik, terlindungi, dan disimpan dengan benar saat tidak digunakan ?",
                     "20.26 Apakah peralatan untuk unloading dan transfer produk tertutup pada saat tidak digunakan?",
-                    "20.27 Apakah semua lubang, termasuk valve dan piping yang ditemukan distorage tank, truk, pompa, vat, dll ditutup saat tidak digunakan?",
+                    "20.27 Apakah semua lubang, termasuk valve and piping yang ditemukan distorage tank, truk, pompa, vat, dll ditutup saat tidak digunakan?",
                     "20.28 Apakah tank and vat tertutup?",
                     "20.29 Apakah semua sanitizer, bahan-bahan kimia, bahan cleaning disimpan terpisah jauh dari makanan, container produk, packing, material dan bahan baku untuk mencegah terjadinya kontaminasi?",
                     "20.30 Apakah pelumas non food grade disimpan dengan baik dan tidak digunakan pada permukaan yang kontak langsung dengan produk?",
@@ -403,32 +408,37 @@
             }
         ];
 
-        // Render Formulir secara otomatis
+        // Render Formulir secara otomatis dengan input jumlah temuan
         const container = document.getElementById('questions-container');
         gmpData.forEach(category => {
             let catBlock = document.createElement('div');
             catBlock.className = "bg-white p-4 rounded-lg shadow space-y-4";
             catBlock.innerHTML = `<h2 class="text-md font-bold text-blue-800 border-b pb-2">${category.title}</h2>`;
 
-            category.questions.forEach((q, index) => {
-                const qKey = q.split(" ")[0].replace(".", "_"); // Key unik untuk input id
+            category.questions.forEach(q => {
+                const num = q.split(" ")[0];
+                const qKey = num.replace(".", "_"); // Key unik untuk ID elemen
                 let qDiv = document.createElement('div');
                 qDiv.className = "py-3 border-b border-gray-100 last:border-0 flex flex-col gap-2";
                 qDiv.innerHTML = `
                     <p class="text-sm font-medium text-gray-700">${q}</p>
-                    <div class="flex flex-wrap items-center gap-4 mt-1">
-                        <label class="inline-flex items-center text-sm cursor-pointer">
-                            <input type="radio" name="status_${qKey}" value="OK" class="form-radio text-blue-600 focus:ring-blue-500" onchange="saveToLocalStorage()">
-                            <span class="ml-2 bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded font-semibold">OK</span>
+                    <div class="flex flex-wrap items-center gap-3 mt-1">
+                        <!-- Input Jumlah Temuan -->
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs font-semibold text-gray-500">Temuan:</span>
+                            <input type="number" id="count_${qKey}" min="0" placeholder="0" 
+                                class="w-16 text-center text-sm border p-1.5 rounded focus:outline-blue-500 font-bold bg-gray-50"
+                                oninput="handleCountInput('${qKey}')">
+                        </div>
+
+                        <!-- Checkbox N/A -->
+                        <label class="inline-flex items-center text-sm cursor-pointer border px-2 py-1.5 rounded bg-gray-50 hover:bg-gray-100 select-none">
+                            <input type="checkbox" id="na_${qKey}" class="form-checkbox text-blue-600 focus:ring-blue-500 rounded" 
+                                onchange="handleNaCheckbox('${qKey}')">
+                            <span class="ml-1.5 text-xs font-bold text-gray-600">N/A</span>
                         </label>
-                        <label class="inline-flex items-center text-sm cursor-pointer">
-                            <input type="radio" name="status_${qKey}" value="NOT OK" class="form-radio text-blue-600 focus:ring-blue-500" onchange="saveToLocalStorage()">
-                            <span class="ml-2 bg-red-100 text-red-800 text-xs px-2.5 py-0.5 rounded font-semibold">NOT OK</span>
-                        </label>
-                        <label class="inline-flex items-center text-sm cursor-pointer">
-                            <input type="radio" name="status_${qKey}" value="N/A" class="form-radio text-blue-600 focus:ring-blue-500" onchange="saveToLocalStorage()">
-                            <span class="ml-2 bg-gray-100 text-gray-800 text-xs px-2.5 py-0.5 rounded font-semibold">N/A</span>
-                        </label>
+
+                        <!-- Input Keterangan -->
                         <input type="text" id="note_${qKey}" placeholder="Keterangan / Temuan Tindakan Koreksi..." 
                             class="flex-1 min-w-[200px] text-xs border p-1.5 rounded focus:outline-blue-500" oninput="saveToLocalStorage()">
                     </div>
@@ -437,6 +447,30 @@
             });
             container.appendChild(catBlock);
         });
+
+        // Logika ketika input angka jumlah temuan diisi
+        function handleCountInput(qKey) {
+            const countInput = document.getElementById(`count_${qKey}`);
+            const naCheckbox = document.getElementById(`na_${qKey}`);
+            
+            // Jika user mengisi angka, otomatis hilangkan centang N/A
+            if (countInput.value !== "") {
+                naCheckbox.checked = false;
+            }
+            saveToLocalStorage();
+        }
+
+        // Logika ketika checkbox N/A ditekan
+        function handleNaCheckbox(qKey) {
+            const countInput = document.getElementById(`count_${qKey}`);
+            const naCheckbox = document.getElementById(`na_${qKey}`);
+            
+            // Jika N/A dicentang, kosongkan input jumlah temuan
+            if (naCheckbox.checked) {
+                countInput.value = "";
+            }
+            saveToLocalStorage();
+        }
 
         // Simpan data input secara real-time ke LocalStorage (Fitur Offline Persistence)
         function saveToLocalStorage() {
@@ -449,19 +483,20 @@
 
             gmpData.forEach(category => {
                 category.questions.forEach(q => {
-                    const qKey = q.split(" ")[0].replace(".", "_");
-                    const checkedRadio = document.querySelector(`input[name="status_${qKey}"]:checked`);
-                    const noteValue = document.getElementById(`note_${qKey}`).value;
+                    const num = q.split(" ")[0];
+                    const qKey = num.replace(".", "_");
+                    
                     formData.responses[qKey] = {
-                        status: checkedRadio ? checkedRadio.value : "",
-                        note: noteValue
+                        count: document.getElementById(`count_${qKey}`).value,
+                        na: document.getElementById(`na_${qKey}`).checked,
+                        note: document.getElementById(`note_${qKey}`).value
                     };
                 });
             });
             localStorage.setItem('gmp_checklist_data', JSON.stringify(formData));
         }
 
-        // Muat kembali data jika ada di LocalStorage saat aplikasi dibuka kembali
+        // Muat kembali data dari LocalStorage saat halaman dibuka kembali
         function loadFromLocalStorage() {
             const savedData = localStorage.getItem('gmp_checklist_data');
             if (!savedData) return;
@@ -473,13 +508,12 @@
 
             gmpData.forEach(category => {
                 category.questions.forEach(q => {
-                    const qKey = q.split(" ")[0].replace(".", "_");
+                    const num = q.split(" ")[0];
+                    const qKey = num.replace(".", "_");
                     if(parsed.responses[qKey]) {
                         const res = parsed.responses[qKey];
-                        if(res.status) {
-                            const radio = document.querySelector(`input[name="status_${qKey}"][value="${res.status}"]`);
-                            if(radio) radio.checked = true;
-                        }
+                        document.getElementById(`count_${qKey}`).value = res.count || "";
+                        document.getElementById(`na_${qKey}`).checked = res.na || false;
                         document.getElementById(`note_${qKey}`).value = res.note || "";
                     }
                 });
@@ -499,7 +533,7 @@
             }
         }
 
-        // Fungsi Export HTML Table ke File Excel (.xls) secara Client-Side tanpa internet
+        // Fungsi Export ke File Excel (.xls) - Hanya Angka Temuan atau N/A
         function exportToExcel() {
             const date = document.getElementById('audit-date').value || '-';
             const area = document.getElementById('audit-area').value || '-';
@@ -515,8 +549,8 @@
                     <tr></tr>
                     <tr style="background-color:#f3f4f6; font-weight:bold;">
                         <th width="80">No Poin</th>
-                        <th width="400">Poin Pengecekan Spesifik</th>
-                        <th width="100">Status</th>
+                        <th width="420">Poin Pengecekan Spesifik</th>
+                        <th width="120">Hasil Evaluasi / Jml Temuan</th>
                         <th width="300">Keterangan / Tindakan Koreksi</th>
                     </tr>
             `;
@@ -531,15 +565,25 @@
                     const num = q.split(" ")[0];
                     const text = q.replace(num, "").trim();
                     const qKey = num.replace(".", "_");
-                    const checkedRadio = document.querySelector(`input[name="status_${qKey}"]:checked`);
-                    const status = checkedRadio ? checkedRadio.value : "-";
+                    
+                    const countVal = document.getElementById(`count_${qKey}`).value;
+                    const isNa = document.getElementById(`na_${qKey}`).checked;
                     const note = document.getElementById(`note_${qKey}`).value;
+
+                    let hasilEvaluasi = "";
+
+                    if (isNa) {
+                        hasilEvaluasi = "N/A";
+                    } else {
+                        // Jika kosong atau diisi 0, keluarkan angka 0. Jika ada temuan, keluarkan jumlah angkanya.
+                        hasilEvaluasi = countVal === "" ? 0 : parseInt(countVal);
+                    }
 
                     tableHtml += `
                         <tr>
                             <td align="center">${num}</td>
                             <td>${text}</td>
-                            <td align="center" style="font-weight:bold;">${status}</td>
+                            <td align="center" style="font-weight:bold;">${hasilEvaluasi}</td>
                             <td>${note}</td>
                         </tr>
                     `;
@@ -548,31 +592,26 @@
 
             tableHtml += `</table>`;
 
-            // Proses trigger download file blob excel
             const dataType = 'application/vnd.ms-excel';
-            const tableSelect = tableHtml;
             const filename = `GMP_Checklist_${area.replace(/[^a-zA-Z0-9]/g, "_")}_${date}.xls`;
-            
             const downloadLink = document.createElement("a");
             document.body.appendChild(downloadLink);
             
             if(navigator.msSaveOrOpenBlob){
-                const blob = new Blob(['\ufeff' + tableSelect], { type: dataType });
+                const blob = new Blob(['\ufeff' + tableHtml], { type: dataType });
                 navigator.msSaveOrOpenBlob(blob, filename);
             } else {
-                downloadLink.href = 'data:' + dataType + ', ' + encodeURIComponent(tableSelect);
+                downloadLink.href = 'data:' + dataType + ', ' + encodeURIComponent(tableHtml);
                 downloadLink.download = filename;
                 downloadLink.click();
             }
         }
 
-        // Jalankan inisialisasi load data lokal saat selesai memuat halaman
         window.onload = loadFromLocalStorage;
 
-        // Registrasi Service Worker untuk kapabilitas Offline PWA
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js')
-            .then(() => console.log("Service Worker terdaftar dengan sukses."))
+            .then(() => console.log("Service Worker terdaftar."))
             .catch(err => console.log("Gagal mendaftarkan Service Worker:", err));
         }
     </script>
