@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Checklist GMP Offline</title>
+    <!-- Tailwind CSS embedded via style for offline resilience once cached -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body { background-color: #f3f4f6; }
+        .sticky-header { position: sticky; top: 0; z-index: 50; }
+    </style>
+</head>
+<body class="text-gray-800 antialiased font-sans">
+
+    <!-- Header -->
+    <header class="bg-blue-700 text-white p-4 shadow-md sticky-header flex justify-between items-center">
+        <div>
+            <h1 class="text-lg font-bold">Checklist Audit GMP</h1>
+            <p class="text-xs text-blue-200">Kepatuhan Standar Mutu & Sanitasi</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-2 rounded shadow font-semibold transition">
+                Download Excel
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="p-4 max-w-4xl mx-auto pb-24">
+        <!-- Metadata Form -->
+        <div class="bg-white p-4 rounded-lg shadow mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Tanggal Audit</label>
+                <input type="date" id="audit-date" class="w-full border p-2 rounded text-sm focus:outline-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Area / Ruangan</label>
+                <input type="text" id="audit-area" placeholder="Misal: Ruang Proses Koji" class="w-full border p-2 rounded text-sm focus:outline-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Auditor</label>
+                <input type="text" id="audit-person" placeholder="Nama Auditor" class="w-full border p-2 rounded text-sm focus:outline-blue-500">
+            </div>
+        </div>
+
+        <!-- Form Pertanyaan -->
+        <form id="gmp-form" class="space-y-6">
+            <!-- Kontainer Kategori akan di-render otomatis oleh JavaScript -->
+            <div id="questions-container" class="space-y-6"></div>
+        </form>
+
+        <!-- Reset Button Section (Small text link below) -->
+        <div class="mt-8 text-center">
+            <button onclick="resetForm()" class="text-xs text-red-500 hover:text-red-700 underline cursor-pointer bg-none border-none p-0">
+                Hapus semua data / Reset Form
+            </button>
+        </div>
+    </main>
+
+    <!-- JavaScript Data & Logic -->
+    <script>
+        // Data Pertanyaan Lengkap GMP
+        const gmpData = [
+            {
+                id: 1, title: "1. DINDING", questions: [
+                    "1.1 Apakah dinding terbuat dari bahan kedap air?", "1.2 Apakah halus dan mudah dibersihkan?",
+                    "1.3 Apakah bersih, serta bebas dari sarang laba-laba, debu, kondensasi, jamur, dan kotoran?",
+                    "1.4 Apakah ketinggiannya sesuai dengan jenis dan aktivitas operasional sehingga memungkinkan untuk pembersihan yang efektif?",
+                    "1.5 Apakah terdapat cat dinding yang mengelupas atau perlu dilakukan pengecatan ulang?",
+                    "1.6 Apakah sambungan antara dinding dengan lantai dan atap rapat serta tidak membentuk celah?",
+                    "1.7 Jika terdapat dinding kaca, apakah tidak pecah, tidak retak, dan aman terhadap risiko kontaminasi?",
+                    "1.8 Apakah fixtures, tanda-tanda, switch box, panel, atau instalasi lain yang menempel di dinding dipasang sedemikian rupa sehingga mencegah akumulasi kotoran dan serangga?",
+                    "1.9 Apakah ada lubang pada dinding dengan konstruksi hollow block yang dapat menjadi sarang hama?",
+                    "1.10 Apakah ada lubang terbuka pada dinding luar yang tidak tertutup, termasuk lubang untuk conveyor, pipa, selang, atau kabel?",
+                    "1.11 Apakah ada akumulasi debu atau kotoran pada horizontal wall ledges?"
+                ]
+            },
+            {
+                id: 2, title: "2. ATAP / LANGIT-LANGIT", questions: [
+                    "2.1 Apakah terbuat dari bahan yang mudah dibersihkan?", "2.2 Apakah halus dan tidak berdebu?",
+                    "2.3 Apakah terjadi kebocoran pada atap yang berpotensi mencemari produk?", "2.4 Apakah terjadi kondensasi pada atap?",
+                    "2.5 Apakah cat mengelupas dan perlu cat ulang?", "2.6 Apakah pipa dan beam bebas debu dan kotoran?",
+                    "2.7 Apakah insulasi pada langit-langit dalam kondisi baik dan tertutup?",
+                    "2.8 Apakah desain atap/langit-langit memungkinkan akses yang memadai untuk kegiatan pembersihan, pemeliharaan, dan inspeksi?",
+                    "2.9 Apakah tidak terdapat material lepas (isolasi, serpihan cat, karat) yang berpotensi jatuh ke area proses?"
+                ]
+            },
+            {
+                id: 3, title: "3. LANTAI", questions: [
+                    "3.1 Apakah lantai di area proses terbuat dari keramik, beton, atau bahan lain yang kedap air yang kuat dan mudah dibersihkan?",
+                    "3.2 Apakah halus dan tidak licin saat kondisi normal operasional?", "3.3 Apakah bersih dan bebas dari retakan, lubang, atau erosi?",
+                    "3.4 Apakah nat lantai keramik terisi penuh, rata, tidak rusak atau terlepas, dan menempel dengan kuat?",
+                    "3.5 Apakah lubang disekitar pipa dan saluran di lantai benar-benar tertutup rapat?", "3.6 Apakah lubang bekas baut tertutup rapat?",
+                    "3.7 Apakah kemiringan lantai cukup untuk drainage?", "3.8 Apakah lantai tahan terhadap bahan kimia pembersih dan metode pembersihan yang digunakan?"
+                ]
+            },
+            {
+                id: 4, title: "4. SALURAN AIR", questions: [
+                    "4.1 Apakah saluran air berfungsi dengan baik dan tidak tersumbat?", "4.2 Apakah mudah diakses untuk dibersihkan dan diinspeksi?",
+                    "4.3 Apakah saluran di lantai dilengkapi dengan trap yang efektif?", "4.4 Apakah saluran dilengkapi grill dan cover dan dalam kondisi baik?",
+                    "4.5 Pada area kering yang terdapat saluran, apakah terlihat genangan?", "4.6 Apakah saluran dibersihkan dan disanitasi secara teratur?",
+                    "4.7 Apakah pembuangan dari sink atau cooling unit mengalir langsung ke saluran air dan tidak terbuang ke lantai?",
+                    "4.8 Apakah arah aliran drainase menjauhi area berisiko tinggi (misalnya dari bahan mentah ke produk matang)?",
+                    "4.9 Apakah selokan, bak-bak control, saluran dari atap didalam dan atau saluran air bersih dan dalam kondisi baik?"
+                ]
+            },
+            {
+                id: 5, title: "5. JENDELA", questions: [
+                    "5.1 Apakah jendela dan kusen dalam kondisi baik dan rapat?", "5.2 Apakah mudah dibersihkan?",
+                    "5.3 Apakah bersih serta bebas dari kotoran, sarang laba-labba, jamur, dll?", "5.4 Apakah ada kaca jendela yang pecah atau rusak?",
+                    "5.5 Jika jendela berada di atas/sekitar area produk, apakah menggunakan kaca yang aman atau ada pelindung?",
+                    "5.6 Apakah jendela yang terbuka dilengkapi screen secara aktif? Jika ada slide section, apakah ditutup kembali sesudah dibuka?",
+                    "5.7 Apakah ada jendela terbuka yang memungkinkan kontaminasi lingkungan pabrik dari luar?",
+                    "5.8 Apakah pemasangan kaca pada jendela dalam kondisi baik dan bebas jamur?"
+                ]
+            },
+            {
+                id: 6, title: "6. PINTU", questions: [
+                    "6.1 Apakah pintu dalam kondisi baik, bersih, dan tidak berkarat atau rusak?", "6.2 Apakah pintu tertutup rapat saat tidak digunakan?",
+                    "6.3 Apakah arah daun pintu membuka ke arah luar dan bersifat rodent-proof?", "6.4 Apakah tersedia self-closing door jika diperlukan?",
+                    "6.5 Apakah pintu dan kusennya dilengkapi dengan closure well dan knob atau handle yang terpasang kuat?",
+                    "6.6 Apakah kusen pintu rusak?", "6.7 Apakah bagian atas pintu bersih dan rapat?",
+                    "6.8 Jika ada air curtain, apakah efektif dan bersih?", "6.9 Jika ada plastic strip curtain, apakah bersih dan terpelihara dengan baik?",
+                    "6.10 Jika pintu terbuat dari kaca, apakah bersih dan dalam kondisi baik?", "6.11 Apakah pintu ruang penyimpanan bahan kimia selalu terkunci?"
+                ]
+            },
+            {
+                id: 7, title: "7. CABINET", questions: [
+                    "7.1 Apakah cabinet terbuat dari material yang kuat dan dalam kondisi baik?", "7.2 Apakah bagian dalam dan luar cabinet bersih?",
+                    "7.3 Apakah isi cabinet tersimpan dengan rapi?", "7.4 Apakah digunakan sesuai dengan tujuannya?",
+                    "7.5 Apakah dibersihkan secara teratur?", "7.6 Jika disediakan loker, apakah ukuran dan jumlahnya memadai untuk menyimpan baju dan barang-barang lain milik karyawan?",
+                    "7.7 Apakah wadah plastik yang disimpan di cabinet dalam keadaan terbalik untuk meniriskan air?",
+                    "7.8 Apakah setiap wadah pada cabinet ada identitas?", "7.9 Apakah wadah disimpan sesuai dengan ukurannya? (wadah ukuran besar disatukan dengan yang berukuran besar, dan sebaliknya)",
+                    "7.10 Apakah ada stopkontak di atas cabinet?"
+                ]
+            },
+            {
+                id: 8, title: "8. INSTALASI LISTRIK", questions: [
+                    "8.1 Apakah kabel, panel, dan instalasi listrik dalam kondisi baik dan aman?", "8.2 Apakah panel listrik tertutup rapat dan mudah dibersihkan?",
+                    "8.3 Apakah bagian eksterior dan interior dari kotak-kotak listrik bebas debu dan sisa-sisa produk, tanda-tanda serangga, space fuse, mur, baut, potongan-potongan kabel, dll?",
+                    "8.4 Apakah plat penutup hilang atau terbuka pada conduit terminal, control panel, switch box, saklar lampu/wall outlet plug?",
+                    "8.5 Apakah ada jalur listrik yang terbuka atau tidak terpakai dan peralatan yang tidak berguna dan harus dibuang/dipindahkan?",
+                    "8.6 Apakah switch box berkarat/rusak?", "8.7 Apakah extention kabel terbelit disekitar peralatan, tiang, dan penopang, dimana dapat menimbulkan bahaya dan menyulitkan proses-proses celaning dan pengecatan?",
+                    "8.8 Apakah ujung-ujung dan terminal kabel-kabel listrik tertutup?", "8.9 Apakah dilakukan pemeriksaan dan pemeliharaan rutin terhadap instalasi listrik?",
+                    "8.10 Apakah instalasi listrik terlindung dari air dan kelembapan?"
+                ]
+            },
+            {
+                id: 9, title: "9. BARANG-BARANG YANG TIDAK TERPAKAI", questions: [
+                    "9.1 Apakah alat dan barang-barang lain tersebar dilantai, mesin/peralatan, diatas switch box, cabinet, dan kusen jendela?",
+                    "9.2 Apakah barang-barang seperti metal part, lap untuk cleaning, kaleng kayu, sarung tangan, ember, tas, karton, pakauan, dll. disimpan disudut-sudut ruangan, diatas mesin/peralatan, dikusen,dll?",
+                    "9.3 Apakah ditemukan peralatan yang tidak perlu (kotor dan tidak pada tempatnya) yang menyebabkan sanitasi/pestcontrol menjadi tidak efektif?",
+                    "9.4 Apakah ditemukan makanan/baju disimpan diarea produksi/area yang tidak pada tempatnya?",
+                    "9.5 Apakah tersedia cukup gantungan sapu,alat penyapu karet,dan peralatan cleaning yang lain?",
+                    "9.6 Apakah dilakukan pengeluaran atau pemusnahan rutin terhadap barang yang tidak terpakai?"
+                ]
+            },
+            {
+                id: 10, title: "10. PENERANGAN", questions: [
+                    "10.1 Apakah lampu cukup dan intensitas cahayanya terdistribusi dengan baik sesuai fungsinya?",
+                    "10.2 Apakah lampu berfungsi dengan baik dan tidak mati atau berkedip?", "10.3 Apakah dalam kondisi baik serta bebas dari serpihan cat dan karat?",
+                    "10.4 Apakah lampu di area produksi dilengkapi pelindung (shatterproof / cover)?", "10.5 Apakah lampu dan pelindungnya bersih dari debu dan kotoran?",
+                    "10.6 Apakah posisi lampu tidak menyebabkan bayangan berlebih yang mengganggu inspeksi?"
+                ]
+            },
+            {
+                id: 11, title: "11. VENTILASI", questions: [
+                    "11.1 Apakah sistem ventilasi berfungsi dengan baik dan sesuai kebutuhan area?", "11.2 Apakah ada kondensasi pada langit-langit atau dinding Ac?",
+                    "11.3 Apakah kipas angin dan rangka pengamannya bersih?", "11.4 Apakah unit AC bersih?",
+                    "11.5 Apakah exhaust dan intake fan didinding dan langitlangit bersih, diberi screen, dan/dilengkapi dengan self-closing louver?",
+                    "11.6 Apakah uap diexhaust secara memadai?", "11.7 Apakah jamur dan lumut ada disaluran-saluran?",
+                    "11.8 Apakah fasilitas toilet diexhaust ke udara luar atau dengan cara lain untuk melindungi terhadap kontaminasi udara?",
+                    "11.9 Apakah fan, lubang angin, dll. diinstal tepat diatas produk?", "11.10 Apakah aliran udara yang masuk berasal dari sumber yang bersih?",
+                    "11.11 Apakah tersedia ventilasi di area penyimpanan dan pengolahan produk untuk meminimalkan bau, asap, dan uap?",
+                    "11.12 Apakah ventilasi dilengkapi screen atau pelindung untuk mencegah masuknya serangga?",
+                    "11.13 Apakah dibersihkan secara teratur untuk mencegah pertumbuhan jamur dan serangga?"
+                ]
+            },
+            {
+                id: 12, title: "12. PEMBUANGAN SAMPAH", questions: [
+                    "12.1 Apakah tempat sampah tersedia dalam jumlah cukup dan memadai?", "12.2 Apakah tempat sampah diberi identitas?",
+                    "12.3 Apakah tempat sampah tertutup dan dalam kondisi baik?", "12.4 Apakah sampah dibuang apabila tempat sampah sudah penuh dan dikosongkan paling sedikit setiap hari?",
+                    "12.5 Setelah mengosongkan tempat sampah, apakah dicuci sebelum dikembalikan ke area proses, packaging, dan penyimpanan?",
+                    "12.6 Apakah area tempat sampah bersih dan bebas bau?", "12.7 Apakah tempat sampah tidak menjadi akses atau sarang hama?",
+                    "12.8 Apakah ada tempat sampah yang rusak?"
+                ]
+            },
+            {
+                id: 13, title: "13. PEMELIHARAAN PERALATAN, DESIGN, KONSTRUKSI & INSTALASI", questions: [
+                    "13.1 Apakah seluruh peralatan dan perlengkapan dirancang dari bahan yang mudah dibersihkan, dirawat, dan diperiksa?",
+                    "13.2 Apakah permukaan yang kontak langsung dengan produk halus, kedap air, non-toxic, non-absorbent, dan resistan terhadap karat?",
+                    "13.3 Apakah panel samping pada konveyor produk dipasang dengan penyangga atau mudah dilepas?", "13.4 Apakah ada dead end?",
+                    "13.5 Apakah tutup mixing tank, dll. cukup rapat dan didesign untuk mencegah kontaminasi produk?", "13.6 Apakah ada celah/lubang pada engsel dari tutup?",
+                    "13.7 Apakah bearing didalam dan diluar area produk dilubrikasi secara berlebihan?", "13.8 Apakah sambungan-sambungan stainless steel terpasang dalam kondisi baik?",
+                    "13.9 Apakah permukaan yang kontak dengan produk dalam kondisi baik dan bebas dari penyok di sisi yang tajam?",
+                    "13.10 Apakah semua peralatan didesign agar mudah dicuci dan diinspeksi, termasuk CIP system?",
+                    "13.11 Apakah peralatan didesign untuk mengurangi percikan produk dan kebocoran?", "13.12 Apakah semua permukaan dapat dicuci?",
+                    "13.13 Apakah mur,baut, dll menyulitkan proses cleaning?",
+                    "13.14 Apakah sambungan-sambungan permanent dan tepi-tepi terisi, terpateri, atau bebas celah, retak atau permukaan yang saling tumpang tindih?",
+                    "13.15 Apakah peralatan dipasang minimal 6 inci (±15 cm) dari lantai dan didukung oleh pendukung yang kuat apabila base tidak dibangun diatas lantai?",
+                    "13.16 Apakah jalur pipa-pipa SS disangga dengan gantungan atau penahan sedemikian sehingga memungkinkan drainage yang baik?",
+                    "13.17 Apakah jalur pipa-pipa SS disangga dengan gantungan atau penahan sedemikian sehingga memungkinkan drainage yang baik?",
+                    "13.18 Apakah ada conveyor belt yang robek dan terpotong?", "13.19 Apakah man hole, sight glass, dan seal-seal pipa dalam kondisi baik?",
+                    "13.20 Apakah material untuk permanent gasket non toxic, stabil, tidak berbau, kedap air, dan tidak dipengaruhi oleh ingredient atau produk dan oleh pencucian?",
+                    "13.21 Apakah storage tanks ada ventilasinya?", "13.22 Apakah holding tube memiliki penyangga agar posisinya tidak bergeser?",
+                    "13.23 Apakah pompa-pompa didesign agar mudah dilepaskan untuk dicuci secara manual atau apakah konstruksinya memungkinkan untuk CIP?",
+                    "13.24 Apakah selang-selang produk dalam kondisi baik?", "13.25 Apakah seluruh jalur pipa dan fitting dikonstruksi sedemikian sehingga sehingga kebocoran tidak terjadi?",
+                    "13.26 Apakah baut, paku keeling, atau pin telah dikencangkan dengan baik sehingga aman untuk mencegah agar mur, ring penutup, dll. tidak jatuh ke dalam peralatan produksi ?",
+                    "13.27 Apakah seluruh peralatan yang kontak langsung dengan produk terbuat dari bahan food grade, tidak berkarat, dan tidak bereaksi dengan produk?",
+                    "13.28 Apakah peralatan yang rusak atau tidak layak pakai dipisahkan, diberi identifikasi, dan tidak digunakan dalam proses produksi?",
+                    "13.29 Apakah peralatan dibersihkan secara teratur?", "13.30 Apakah peralatan pemantauan (misalnya suhu) dikalibrasi dan berfungsi dengan akurat?",
+                    "13.31 Jika ada isolasi pada wadah, apakah akan terkelupas?", "13.32 Apakah ada selang/alat yang bersentuhan langsung dengan lantai ketika tidak digunakan?",
+                    "13.33 Apakah timbangan berada di posisi yang seharusnya (tidak dipindahkan)?", "13.34 Apakah ada tatakan kertas/ tisu dibawah mesin/peralatan?",
+                    "13.35 Apakah jimbeng tertutup rapat?", "13.36 Apakah terdapat identitas pada jimbeng?", "13.37 Apakah bahan kimia diletakkan secara terpisah?"
+                ]
+            },
+            {
+                id: 14, title: "14. STOCK ARRANGEMENT", questions: [
+                    "14.1 Apakah bahan baku dan barang diletakkan di pallet (tidak di lantai)?", "14.2 Apakah jarak penyimpanan bahan baku dan barang jadi minimal 45 cm dari dinding?",
+                    "14.3 Apakah pallet dalam kondisi baik dan bersih?", "14.4 Apakah ada lembaran alas diantara palet dan bahan baku?",
+                    "14.5 Apakah stacking dilakukan secara benar dan aman?", "14.6 Apakah stock tidak menempel ke langit-langit dan tidak menghalangi ventilasi atau lampu?",
+                    "14.7 Apakah stock bebas dari akumulasi debu dan benda-benda asing lainnya?", "14.8 Apakah terlihat kebocoran pada produk yang disimpan?",
+                    "14.9 Apakah terjadi kerusakan bahan baku/produk jadi?", "14.10 Apakah semua stock memiliki identitas yang jelas (nama, kode, status, tanggal)?",
+                    "14.11 Apakah stock disimpan di area yang bersih dan kering, serta terlindungi dari percikan dan debu?",
+                    "14.12 Apakah penataan stock tidak menjadi tempat persembunyian serangga atau rodent?", "14.13 Bila ada ketentuan maksimum stocking, apakah diikuti?",
+                    "14.14 Apakah stock dipelihara secara teratur?", "14.15 Apakah sistem FIFO dijalankan?"
+                ]
+            },
+            {
+                id: 15, title: "15. BAU-BAU YANG TIDAK DIINGINKAN", questions: [
+                    "15.1 Apakah terdeteksi bau yang tidak normal?", "15.2 Jika ada bau yang tidak normal, apakah dikendalikan agar tidak mengkontaminasi produk?",
+                    "15.3 Apakah sistem ventilasi berfungsi efektif untuk mengendalikan bau dan asap?"
+                ]
+            },
+            {
+                id: 16, title: "16. KEBERSIHAN PERALATAN SEMUA PERMUKAAN PERALATAN PROSES", questions: [
+                    "16.1 Apakah fasilitas dan area khusus pembersihan peralatan tersedia dan terpisah dari toilet, drainase, dan area sampah?",
+                    "16.2 Apakah permukaan luar peralatan dibersihkan secara rutin untuk mencegah akumulasi residu produk, kotoran, bahan-bahan baku yang lengket, minyak, pelumas, dan kotoran-kotoran lain?",
+                    "16.3 Apakah circulating equipment bersih dan berfungsi secara efektif (jika digunakan)?",
+                    "16.4 Apakah bagian-bagian mesin/peralatan yang dapat dibongkar dan sudah dibersihkan disimpan ditempat yang aman untuk mencegah kontaminasi?",
+                    "16.5 Apakah peralatan yang memerlukan hand cleaning secara teratur dibongkar, diinspeksi, dan dibersihkan?",
+                    "16.6 Apakah valve, gasket, dan pompa dibersihkan?", "16.7 Apakah peralatan disanitasi dengan benar setelah proses pencucian dan pembilasan?",
+                    "16.8 Apakah container yang digunakan untuk ingredient yang sama dibersihkan setelah dipakai?", "16.9 Apakah ada debu produk pada motor-motor?",
+                    "16.10 Apakah selang-selang dibersihkan secara benar?", "16.11 Apakah dust collector diinspeksi untuk benda-benda asing?",
+                    "16.12 Apakah peralatan yang tidak dibersihkan dengan CIP system dibongkar dan dibersihkan secara teliti dan disanitasi?",
+                    "16.13 Apakah ada sisa-sisa produk/benda-benda asing antara permukaan interface dari selang flexible dan hose coupling (yang dapat masuk ke dalam aliran produk jika digunakan)?",
+                    "16.14 Apakah wadah sekali pakai dihancurkan/dilubangi sehingga tidak dapat digunakan kembali?",
+                    "16.15 Apakah kontainer curah atau kontainer pengiriman diperiksa dan dicocokkan dengan nomor segel saat penerimaan?"
+                ]
+            },
+            {
+                id: 17, title: "17. INSECT CONTROL", questions: [
+                    "17.1 Apakah terdapat program pengendalian serangga yang terdokumentasi dan dijalankan secara konsisten?",
+                    "17.2 Apakah lampu perangkap serangga (ILT) dipasang di lokasi yang tepat dan tidak berada langsung di atas area proses terbuka?",
+                    "17.3 Apakah ILT diberi nomor identifikasi dan tercantum dalam peta pengendalian hama?", "17.4 Apakah ditemukan aktivitas serangga hidup atau mati?",
+                    "17.5 Apakah hasil monitoring serangga diperiksa dan dicatat secara rutin?",
+                    "17.7 Apakah ada kotoran, jejak kaki, atau cast skin di drum, kantong bahan baku, mesin-mesin, saluran-saluran, lampu-lampu, dll?",
+                    "17.8 Apakah ada tanda-tanda serangga dibawah sistem conveyor belt?", "17.9 Apakah ada tanda-tanda serangga pada lipatan-lipatan kantong bahan baku?",
+                    "17.10 Apakah ada tanda-tanda serangga pada container produk ditempat penyimpanan?", "17.11 Apakah ada serbuan serangga pada perangkap rodent?",
+                    "17.12 Apakah unit insect control ditempatkan secara tepat, dipelihara, dan dibersihkan?",
+                    "17.13 Apakah ada kecoa, kerumunan serangga, dan/ larve cast skin pada atau didalam lampu dan didekat motor-motor listrik?",
+                    "17.14 Apakah area disekitar, pada, dan dibawah peralatan yang tidak terpakai di plant diperiksa untuk serangga?",
+                    "17.15 Apakah ada kumpulan serangga (terutama saw-toothed and flour beetles) pada lantai dimana barang-barang seperti mesin/cabinet kontak langsung dengan lantai?",
+                    "17.16 Apakah container vacuum cleaner diperiksa terhadap serangga? (dapat digunakan sebagai tanda adanya problem)",
+                    "17.17 Apakah ada grain moth terbang dibangunan?", "17.18 Apakah sisa-sisa produk yang mungkin jatuh ke pallet bahan baku/packaging material diperiksa terhadap serangga?",
+                    "17.19 Apakah pintu yang rusak/berkarat dan area disekitar kusen pintu yang rusak diperiksa terhadap serangga?",
+                    "17.20 Apakah area sekitar bangunan bersih dan tidak menarik serangga?"
+                ]
+            },
+            {
+                id: 18, title: "18. RODENT CONTROL", questions: [
+                    "18.1 Apakah terdapat program pengendalian rodent yang terdokumentasi dan dijalankan secara konsisten?",
+                    "18.2 Apakah ada rodent baik hidup atau mati maupun bangkainya?", "18.3 Apakah ada kotorannya yang sudah lama atau segar?",
+                    "18.4 Apakah terlihat tanda-tanda jejak lari,noda urine atau jejak kaki?", "18.5 Apakah ada kerusakan produk,material,/property karena gerogotan?",
+                    "18.6 Apakah terlihat saranga atau usaha untuk memperoleh material sarang?",
+                    "18.7 Apakah ada bangkai atau pallet, station rusak, umpan tercecer, jamur atau kerumunan serangga yang mengindikasikan kurangnya inspeksi dan control selama pengujian bait station?",
+                    "18.8 Apakah ditemukan ilang pada fondasi bangunan?", "18.9 Apakah ditemukan binatang-binatang yang lain seperti kucing,anjing,tupai,dll?",
+                    "18.10 Apakah ada aktivitas rodent disekitar slow moving packaging material dan advertising material/bahan baku?",
+                    "18.11 Apakah pallet yang berisi stock diperiksa untuk aktivitas rodent?",
+                    "18.12 Apakah ada kotoran diantara pallet berisi stock dan tempat yang berantakan digudang penyimpanan?",
+                    "18.13 Apakah ditemukan rodent pada box umpan/perangkap mekanik?",
+                    "18.14 Apakah rodent bait station tertutup,aman,tamper resistent dan digunakan hanya diluar plant?",
+                    "18.15 Apakah seluruh rodent station diberi nomor identifikasi dan tercantum dalam peta kontrol hama?",
+                    "18.16 Apakah pintu, dinding, lantai, drain, dan celah bangunan dalam kondisi baik dan tertutup rapat untuk mencegah masuknya rodent?",
+                    "18.17 Apakah area sekitar bangunan bersih, bebas sampah, rumput liar, dan genangan air yang dapat menarik rodent?",
+                    "18.18 Apakah rodentisida digunakan secara aman, terkendali, dan tidak berisiko mencemari produk?",
+                    "18.19 Apakah wadah rodent bait/poison rusak?"
+                ]
+            },
+            {
+                id: 19, title: "19. BIRD CONTROL", questions: [
+                    "19.1 Apakah ditemukan burung baik hidup atau mati?", "19.2 Apakah ada kotoran burung?", "19.3 Apakah ada bulu burung?",
+                    "19.4 Apakah struktur bangunan (atap, ventilasi, kanopi, loading area) dilengkapi pengaman untuk mencegah burung masuk atau bertengger?",
+                    "19.5 Apakah burung bertengger atau bersarang dibagian atap bangunan, dibawah langit-langit, convered can run, diluar gedung atau bagian bangunan-bangunan yang jarang digunakan?",
+                    "19.6 Apakah bagian luar yang terbuka diproteksi untuk mencegah masuknya burung?", "19.7 Apakah ada pintu yang terbuka sehingga memungkinkan burung masuk?"
+                ]
+            },
+            {
+                id: 20, title: "20. PRODUCT PROTECTION", questions: [
+                    "20.1 Apakah sarung tangan yang digunakan bersih, disanitasi, dan disimpan secara hygienis?",
+                    "20.2 Apakah container bahan baku dan produk jadi tertutup dan teridentifikasi dengan baik?", "20.3 Apakah container produk jadi digunakan untuk tujuan lain?",
+                    "20.4 Apakah semua container penyimpanan teridentifikasi sesuai dengan isinya?", "20.5 Apakah wadah disimpan tertutup untuk melindungi dari kontaminasi struktur di atasnya?",
+                    "20.6 Apakah container produk jadi dan atau bahan baku yang telah terbuka diseal kembali ketika dikembalikan ke tempat penyimpanan?",
+                    "20.7 Apakah tutup container produk disimpan dengan baik untuk mencegah kontaminasi?", "20.8 Apakah kantong bahan baku, packing material, dan drum disimpan dengan baik untuk mencegah kontaminasi?",
+                    "20.9 Apakah container bahan baku dikonstruksi dan didesign sedemikian rupa sehingga mencegah kontaminasi dan memudahkan proses cleaning?",
+                    "20.10 Pada saat disimpan, apakah kantong yang rusak atau sudah dibuka dan container produk di seal kembali dan dilindungi dari kontaminasi?",
+                    "20.11 Apakah container produk dan bahan baku terbuka selama pembongkaran atau interupsi lain untuk waktu yang cukup lama?",
+                    "20.12 Apakah bahan baku yang rentan terhadap serangga dan disimpan >4 minggu diperiksa secara berkala?",
+                    "20.13 Pada saat hanya dibutuhkan bahan baku dalam jumlah kecil untuk formulasi, apakah digunakan container sebaliknya daripada kantong?",
+                    "20.14 Apakah bahan baku dan produk jadi yang cepat rusak disimpan pada temperatur yang benar dan dikontrol secara teratur?",
+                    "20.15 Apakah cold storage room dilengkapi dengan thermometer yang akurat dan mudah dibaca dengan recording device jika dibutuhkan?",
+                    "20.16 Jika tidak ada recording device, apakah temperature diperiksa secara teratur dan dicatat ?",
+                    "20.17 Apakah produk terbuka terlindungi dari tetesan kondensasi (langit-langit, pipa, sistem pendingin, saluran air)?",
+                    "20.18 Apakah outer layer dari kantong bahan baku dibuka/dibersihkan sebelum digunakan?", "20.19 Apakah coding container ada dan mudah dibaca?",
+                    "20.20 Apakah produk terlindungi dari kontaminasi cat terkelupas, karat, atau serpihan struktur di atasnya?",
+                    "20.21 Apakah conveyor belt produk bersih serta bebas celah dan retak?",
+                    "20.22 Apakah container pada conveyor yang berjalan pada mesin-mesin bottling/packaging dilengkapi pelindung dibagian atasnya untuk mencegah kontaminasi botol dan packaging?",
+                    "20.23 Apakah karyawan menggunakan scoop untuk bahan baku yang telah diletakkan dilantai tanpa dicuci dan disanitasi terlebih dahulu?",
+                    "20.24 Apakah fitting dan selang terlindungi (tidak diatas lantai, kering, dll)?",
+                    "20.25 Apakah selang air yang digunakan dalam proses produksi dalam kondisi baik, terlindungi, dan disimpan dengan benar saat tidak digunakan ?",
+                    "20.26 Apakah peralatan untuk unloading dan transfer produk tertutup pada saat tidak digunakan?",
+                    "20.27 Apakah semua lubang, termasuk valve dan piping yang ditemukan distorage tank, truk, pompa, vat, dll ditutup saat tidak digunakan?",
+                    "20.28 Apakah tank and vat tertutup?",
+                    "20.29 Apakah semua sanitizer, bahan-bahan kimia, bahan cleaning disimpan terpisah jauh dari makanan, container produk, packing, material dan bahan baku untuk mencegah terjadinya kontaminasi?",
+                    "20.30 Apakah pelumas non food grade disimpan dengan baik dan tidak digunakan pada permukaan yang kontak langsung dengan produk?",
+                    "20.31 Apakah hasil sapuan lantai, sampah mesin, dll teridentifikasi dengan jelas sebagai sampah untuk mencegah kontaminasi produk?",
+                    "20.32 Apakah alat-alat untuk maintenance supply, peralatan, atau item-item lain ditinggalkan diatas peralatan handling product sehingga memungkinkan untuk jatuh ke dalam produk?",
+                    "20.33 Apakah pisau silet digunakan dalam plant?", "20.34 Apakah sepon steel, kayu atau metal digunakan dalam proses cleaning peralatan?"
+                ]
+            },
+            {
+                id: 21, title: "21. SANITARY PRACTICES", questions: [
+                    "21.1 Apakah karyawan mencuci tangan sebelum meninggalkan toilet?", "21.2 Apakah karyawan mencuci tangan dengan benar?",
+                    "21.3 Apakah perhiasan, jam tangan, cincin, pin, peniti, dan barang-barang dikantong baju dilarang di area produksi?",
+                    "21.4 Jika sarung tangan digunakan, apakah bersih ,utuh, dan dipelihara sanitasinya?", "21.5 Apakah sebelum memulai kegiatan produksi tangan dicuci sesering mungkin?",
+                    "21.6 Apakah karyawan yang kontak langsung dengan produk bebas dari luka, bisul, dan radang?", "21.7 Pada kasus luka yang dibalut ditangan, apakah memakai disposable plastic gloves?",
+                    "21.8 Apakah karyawan dengan luka tertutup plester tahan air dan menggunakan sarung tangan (jika tetap bekerja)?",
+                    "21.9 Apakah karyawan yang melakukan proses produksi menghindari praktik-praktik seperti menggaruk-garuk kepala, menaruh jari dalam mulut/hidung, bersin dan batuk sembarangan tanpa ditutup yang dapat menyebabkan kontaminan produk?",
+                    "21.10 Apakah karyawan makan, mengunyah permen karet,/merokok diarea produksi?",
+                    "21.11 Apakah karyawan diarea produksi memakai penutup rambut dan jenggot serta topi secara benar ?",
+                    "21.12 Apakah ada karyawan yang menggunakan cat kuku dan bulu mata palsu?"
+                ]
+            },
+            {
+                id: 22, title: "22. KEBERSIHAN KARYAWAN", questions: [
+                    "22.1 Apakah semua karyawan di area medium higiene menggunakan seragam kerja, sepatu safety , dan hairnet, sedangkan untuk diarea high higiene menggunakan lab coat, sepatu safety , masker, hairnet, dan sarung tangan?",
+                    "22.2 Apakah penutup rambut, penutup jenggot, masker, dan sarung tangan dipakai dengan benar?",
+                    "22.3 Apakah sepatu safety yang digunakan sesuai dengan zona hygiene (medium hygiene: coklat/boot hijau dan high hygiene: safety putih/boot kuning)?",
+                    "22.4 Apakah personel engineering memakai baju yang bersih selama melakukan maintenance peralatan?",
+                    "22.5 Apakah karyawan menunjukkan personel hygiene yang baik dan benar?"
+                ]
+            },
+            {
+                id: 23, title: "23. FASILITAS CUCI TANGAN", questions: [
+                    "23.1 Apakah fasilitas cuci tangan di area proses dimana karyawan berhubungan langsung dengan produk jumlah dan lokasinya memadai?",
+                    "23.2 Apakah fasilitas cuci tangan dalam keadaan bersih dan baik?",
+                    "23.3 Pada semua station pencucian tangan, apakah tersedia sabun dalam dispenser, air hand dryer atau tissue, dan tempat sampah tertutup?",
+                    "23.4 Apakah sabun cair yang digunakan? (sabun batangan tidak boleh digunakan)",
+                    "23.5 Wastafel bersih dan berfungsi dengan baik, serta tidak digunakan untuk keperluan lain?",
+                    "23.6 Apakah keran dirancang higienis (non-hand operated) atau ada kontrol pencegahan kontaminasi?",
+                    "23.7 Apakah terdapat poster yang berisi instruksi bagi karyawan untuk mencuci dan melakukan sanitasi tangan mereka sebelum kembali bekerja?",
+                    "23.8 Apakah fasilitas cuci tangan dipelihara dan diperiksa secara teratur?"
+                ]
+            },
+            {
+                id: 24, title: "24. FASILITAS TOILET", questions: [
+                    "24.1 Apakah toilet bersih, berfungsi baik, dan bebas bau, jamur, serta hama?", "24.2 Apakah ada flush box dan tertutup?",
+                    "24.3 Apakah flush berfungsi dengan baik?", "24.4 Apakah tersedia air bersih dengan tekanan yang cukup?",
+                    "24.5 Apakah tersedia toilet tissue pada setiap toilet?", "24.6 Apakah terjadi penyumbatan saluran yang terlihat melalui toilet bowl yang tergenang?",
+                    "24.7 Apakah di setiap rest room tersedia tanda jelas yang meningkatkan karyawan untuk mencuci tangan mereka sebelum kembali?",
+                    "24.8 Apakah tersedia air panas, sabun/sanitizer di dispenser, air hand dryer atau handuk, dan tempat sampah tertutup ditempat cuci tangan?",
+                    "24.9 Apakah toilet tidak langsung terbuka ke area produksi atau dikontrol ventilasinya?", "24.10 Apakah peralatan pembersih toilet tidak digunakan di area lain?"
+                ]
+            },
+            {
+                id: 25, title: "25. LINGKUNGAN SEKITAR", questions: [
+                    "25.1 Apakah lingkungan luar pabrik bersih, rapi, dan bebas sampah?",
+                    "25.2 Apakah terdapat genangan air yang berpotensi menjadi tempat perkembangbiakan serangga atau mikroba dan foot borne filth?",
+                    "25.3 Apakah pertumbuhan gulma dan rumput tinggi dikendalikan di sekitar dinding bangunan untuk mengurangi sarang pest dan pemandangan yang jelek?",
+                    "25.4 Apakah halaman, jalan, dan area parkir diaspal atau dipelihara?", "25.5 Apakah ada scrap (sisa-sisa), sampah, pellet, peralatan, dan material?",
+                    "25.6 Apakah ada bangunan yang tidak digunakan, contohnya gudang luar, yang tidak bersih dan tidak teratur?",
+                    "25.7 Apakah atap, dinding luar, dan loading area bersih dan terawat?", "25.8 Apakah ada saluran air di atap dan dalam kondisi baik?",
+                    "25.9 Apakah tempat sampah di luar ada tutupnya dan terpelihara?", "25.10 Apakah area penampungan sampah di luar bersih dan dipelihara dengan baik?",
+                    "25.11 Apakah peralatan atau material yang disimpan di luar mudah diinspeksi dan tidak menjadi sarang hama?"
+                ]
+            },
+            {
+                id: 26, title: "26. SHIPPING AND RECEIVING", questions: [
+                    "26.1 Apakah ada program untuk inspeksi incoming raw material dan carriernya, serta inspeksi pengiriman produk dan carriernya?",
+                    "26.2 Apakah container bahan baku bersih, tidak rusak, dan bebas dari benda-benda asing?",
+                    "26.3 Apakah container bahan baku bebas dari serangga, rodent, dan burung?",
+                    "26.4 Apakah kantong-kantong atau container bahan baku yang berada di bagian bawah dari apllet diatur dengan system FIFO?",
+                    "26.5 Apakah truk atau mobil secara teliti diinspeksi sebelum bahan-bahan ditransfer?",
+                    "26.6 Apakah tempat untuk produk jadi dan pallet diinspeksi untuk debu, serangga, rodent, dan burung termasuk sarang laba-laba dan telur-telur?",
+                    "26.7 Apakah tempat produk jadi kering dan tidak rusak?", "26.8 Apakah pallet untuk produk jadi rusak atau kotor?",
+                    "26.9 Apakah lipatan-lipatan pada kantong bahan baku diinspeksi untuk serangga karena mereke biasanya bersembunyi di area yang gelap?",
+                    "26.10 Apakah container diinspeksi untuk kotoran rodent dan burung?", "26.11 Apakah dilakukan pencatatan hasil pemeriksaan kendaraan dan bahan?",
+                    "26.12 Apakah bahan mentah dan produk jadi dipisahkan selama penerimaan dan pengiriman?", "26.13 Apakah kontainer yang rusak, kotor, atau terkontaminasi tidak diterima?",
+                    "26.14 Apakah area receiving & shipping dapat mencegah kontaminasi silang dari lingkungan luar?",
+                    "26.15 Apakah tempat penyimpanan memungkinkan pemisahan makanan mentah dan matang, atau makanan yang menimbulkan alergi dan makanan yang tidak menimbulkan alergi?"
+                ]
+            }
+        ];
+
+        // Render Formulir secara otomatis
+        const container = document.getElementById('questions-container');
+        gmpData.forEach(category => {
+            let catBlock = document.createElement('div');
+            catBlock.className = "bg-white p-4 rounded-lg shadow space-y-4";
+            catBlock.innerHTML = `<h2 class="text-md font-bold text-blue-800 border-b pb-2">${category.title}</h2>`;
+
+            category.questions.forEach((q, index) => {
+                const qKey = q.split(" ")[0].replace(".", "_"); // Key unik untuk input id
+                let qDiv = document.createElement('div');
+                qDiv.className = "py-3 border-b border-gray-100 last:border-0 flex flex-col gap-2";
+                qDiv.innerHTML = `
+                    <p class="text-sm font-medium text-gray-700">${q}</p>
+                    <div class="flex flex-wrap items-center gap-4 mt-1">
+                        <label class="inline-flex items-center text-sm cursor-pointer">
+                            <input type="radio" name="status_${qKey}" value="OK" class="form-radio text-blue-600 focus:ring-blue-500" onchange="saveToLocalStorage()">
+                            <span class="ml-2 bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded font-semibold">OK</span>
+                        </label>
+                        <label class="inline-flex items-center text-sm cursor-pointer">
+                            <input type="radio" name="status_${qKey}" value="NOT OK" class="form-radio text-blue-600 focus:ring-blue-500" onchange="saveToLocalStorage()">
+                            <span class="ml-2 bg-red-100 text-red-800 text-xs px-2.5 py-0.5 rounded font-semibold">NOT OK</span>
+                        </label>
+                        <label class="inline-flex items-center text-sm cursor-pointer">
+                            <input type="radio" name="status_${qKey}" value="N/A" class="form-radio text-blue-600 focus:ring-blue-500" onchange="saveToLocalStorage()">
+                            <span class="ml-2 bg-gray-100 text-gray-800 text-xs px-2.5 py-0.5 rounded font-semibold">N/A</span>
+                        </label>
+                        <input type="text" id="note_${qKey}" placeholder="Keterangan / Temuan Tindakan Koreksi..." 
+                            class="flex-1 min-w-[200px] text-xs border p-1.5 rounded focus:outline-blue-500" oninput="saveToLocalStorage()">
+                    </div>
+                `;
+                catBlock.appendChild(qDiv);
+            });
+            container.appendChild(catBlock);
+        });
+
+        // Simpan data input secara real-time ke LocalStorage (Fitur Offline Persistence)
+        function saveToLocalStorage() {
+            const formData = {
+                date: document.getElementById('audit-date').value,
+                area: document.getElementById('audit-area').value,
+                person: document.getElementById('audit-person').value,
+                responses: {}
+            };
+
+            gmpData.forEach(category => {
+                category.questions.forEach(q => {
+                    const qKey = q.split(" ")[0].replace(".", "_");
+                    const checkedRadio = document.querySelector(`input[name="status_${qKey}"]:checked`);
+                    const noteValue = document.getElementById(`note_${qKey}`).value;
+                    formData.responses[qKey] = {
+                        status: checkedRadio ? checkedRadio.value : "",
+                        note: noteValue
+                    };
+                });
+            });
+            localStorage.setItem('gmp_checklist_data', JSON.stringify(formData));
+        }
+
+        // Muat kembali data jika ada di LocalStorage saat aplikasi dibuka kembali
+        function loadFromLocalStorage() {
+            const savedData = localStorage.getItem('gmp_checklist_data');
+            if (!savedData) return;
+            const parsed = JSON.parse(savedData);
+            
+            document.getElementById('audit-date').value = parsed.date || "";
+            document.getElementById('audit-area').value = parsed.area || "";
+            document.getElementById('audit-person').value = parsed.person || "";
+
+            gmpData.forEach(category => {
+                category.questions.forEach(q => {
+                    const qKey = q.split(" ")[0].replace(".", "_");
+                    if(parsed.responses[qKey]) {
+                        const res = parsed.responses[qKey];
+                        if(res.status) {
+                            const radio = document.querySelector(`input[name="status_${qKey}"][value="${res.status}"]`);
+                            if(radio) radio.checked = true;
+                        }
+                        document.getElementById(`note_${qKey}`).value = res.note || "";
+                    }
+                });
+            });
+        }
+
+        // Reset Formulir
+        function resetForm() {
+            if (confirm("Apakah Anda yakin ingin menghapus semua data checklist saat ini?")) {
+                localStorage.removeItem('gmp_checklist_data');
+                document.getElementById('gmp-form').reset();
+                document.getElementById('audit-date').value = "";
+                document.getElementById('audit-area').value = "";
+                document.getElementById('audit-person').value = "";
+                alert("Formulir berhasil direset.");
+                window.scrollTo(0,0);
+            }
+        }
+
+        // Fungsi Export HTML Table ke File Excel (.xls) secara Client-Side tanpa internet
+        function exportToExcel() {
+            const date = document.getElementById('audit-date').value || '-';
+            const area = document.getElementById('audit-area').value || '-';
+            const person = document.getElementById('audit-person').value || '-';
+
+            let tableHtml = `
+                <table border="1">
+                    <tr style="background-color:#1d4ed8; color:white;">
+                        <th colspan="4" style="font-size:16px; font-weight:bold; height:30px;">LAPORAN AUDIT CHECKLIST GMP</th>
+                    </tr>
+                    <tr><td><b>Tanggal Audit:</b></td><td>${date}</td><td><b>Auditor:</b></td><td>${person}</td></tr>
+                    <tr><td><b>Area Evaluasi:</b></td><td colspan="3">${area}</td></tr>
+                    <tr></tr>
+                    <tr style="background-color:#f3f4f6; font-weight:bold;">
+                        <th width="80">No Poin</th>
+                        <th width="400">Poin Pengecekan Spesifik</th>
+                        <th width="100">Status</th>
+                        <th width="300">Keterangan / Tindakan Koreksi</th>
+                    </tr>
+            `;
+
+            gmpData.forEach(category => {
+                tableHtml += `
+                    <tr style="background-color:#e5e7eb; font-weight:bold;">
+                        <td colspan="4">${category.title}</td>
+                    </tr>
+                `;
+                category.questions.forEach(q => {
+                    const num = q.split(" ")[0];
+                    const text = q.replace(num, "").trim();
+                    const qKey = num.replace(".", "_");
+                    const checkedRadio = document.querySelector(`input[name="status_${qKey}"]:checked`);
+                    const status = checkedRadio ? checkedRadio.value : "-";
+                    const note = document.getElementById(`note_${qKey}`).value;
+
+                    tableHtml += `
+                        <tr>
+                            <td align="center">${num}</td>
+                            <td>${text}</td>
+                            <td align="center" style="font-weight:bold;">${status}</td>
+                            <td>${note}</td>
+                        </tr>
+                    `;
+                });
+            });
+
+            tableHtml += `</table>`;
+
+            // Proses trigger download file blob excel
+            const dataType = 'application/vnd.ms-excel';
+            const tableSelect = tableHtml;
+            const filename = `GMP_Checklist_${area.replace(/[^a-zA-Z0-9]/g, "_")}_${date}.xls`;
+            
+            const downloadLink = document.createElement("a");
+            document.body.appendChild(downloadLink);
+            
+            if(navigator.msSaveOrOpenBlob){
+                const blob = new Blob(['\ufeff' + tableSelect], { type: dataType });
+                navigator.msSaveOrOpenBlob(blob, filename);
+            } else {
+                downloadLink.href = 'data:' + dataType + ', ' + encodeURIComponent(tableSelect);
+                downloadLink.download = filename;
+                downloadLink.click();
+            }
+        }
+
+        // Jalankan inisialisasi load data lokal saat selesai memuat halaman
+        window.onload = loadFromLocalStorage;
+
+        // Registrasi Service Worker untuk kapabilitas Offline PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+            .then(() => console.log("Service Worker terdaftar dengan sukses."))
+            .catch(err => console.log("Gagal mendaftarkan Service Worker:", err));
+        }
+    </script>
+</body>
+</html>
